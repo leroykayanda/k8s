@@ -1,0 +1,22 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: rahisi
+  region: us-east-1
+
+managedNodeGroups:
+  - name: managed-ng-1
+    instanceType: t2.micro
+    minSize: 2
+    maxSize: 4
+    desiredCapacity: 1
+    volumeSize: 5
+    ssh:
+      allow: true
+      publicKeyName: 'web-servers-key-pair'
+    labels: {role: worker}
+    tags:
+      nodegroup-role: worker
+      auto-delete: no
+      name: eks-node
