@@ -10,7 +10,7 @@ managedNodeGroups:
     instanceType: t2.medium
     minSize: 2
     maxSize: 4
-    desiredCapacity: 1
+    desiredCapacity: 2
     volumeSize: 5
     ssh:
       allow: true
