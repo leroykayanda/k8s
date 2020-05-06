@@ -7,7 +7,7 @@ metadata:
 
 managedNodeGroups:
   - name: managed-ng-1
-    instanceType: t2.micro
+    instanceType: t2.medium
     minSize: 2
     maxSize: 4
     desiredCapacity: 1
@@ -20,3 +20,6 @@ managedNodeGroups:
       nodegroup-role: worker
       auto-delete: no
       name: eks-node
+    iam:
+      withAddonPolicies:
+        cloudWatch: true
