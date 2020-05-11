@@ -6,7 +6,7 @@ metadata:
   region: us-east-1
 
 managedNodeGroups:
-  - name: managed-ng-1
+  - name: managed-ng-3
     instanceType: t2.medium
     minSize: 2
     maxSize: 4
@@ -21,3 +21,4 @@ managedNodeGroups:
     iam:
       withAddonPolicies:
         cloudWatch: true
+        autoScaler: true
