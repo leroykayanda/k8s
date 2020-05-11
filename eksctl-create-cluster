@@ -18,8 +18,6 @@ managedNodeGroups:
     labels: {role: worker}
     tags:
       nodegroup-role: worker
-      auto-delete: 'no'
-      name: eks-node
     iam:
       withAddonPolicies:
         cloudWatch: true
