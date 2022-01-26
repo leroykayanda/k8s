@@ -20,7 +20,7 @@ managedNodeGroups:
     labels: {role: worker}
     tags:
       nodegroup-role: worker
-      auto-delete: no
+      auto-delete: "no"
     iam:
       withAddonPolicies:
         cloudWatch: true
