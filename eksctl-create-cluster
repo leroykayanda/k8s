@@ -21,6 +21,8 @@ managedNodeGroups:
     tags:
       nodegroup-role: worker
       auto-delete: "no"
+      auto-start: "yes"
+      auto-stop: "no"
     iam:
       withAddonPolicies:
         cloudWatch: true
