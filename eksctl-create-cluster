@@ -13,7 +13,7 @@ managedNodeGroups:
     minSize: 2
     maxSize: 4
     desiredCapacity: 2
-    volumeSize: 5
+    volumeSize: 50
     ssh:
       allow: true
       publicKeyName: 'web-servers-key-pair'
