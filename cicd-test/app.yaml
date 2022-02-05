@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rentrahisi
+  labels:
+    app: rentrahisi
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rentrahisi
+  template:
+    metadata:
+      labels:
+        app: rentrahisi
+    spec:
+      containers:
+        - name: personal-website
+          image: CONTAINER_IMAGE
+          ports:
+            - containerPort: 80 
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service 
+metadata:
+  name: rentrahisi-service
+spec:
+  selector:
+    app: rentrahisi
+  type: ClusterIP 
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80 
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rentrahisi-ingress
+spec:
+  defaultBackend:
+    service:
+      name: rentrahisi-service
+      port:
+        number: 80
+  rules:
+  - host: ingress.kayandal.awsps.myinstance.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: rentrahisi-service
+            port:
+              number: 80
