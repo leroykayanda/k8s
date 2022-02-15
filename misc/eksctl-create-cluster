@@ -10,10 +10,11 @@ availabilityZones: ["us-east-1b","us-east-1d"]
 managedNodeGroups:
   - name: managed-ng-3
     instanceType: t2.medium
-    minSize: 2
-    maxSize: 4
-    desiredCapacity: 2
+    minSize: 1
+    maxSize: 3
+    desiredCapacity: 1
     volumeSize: 50
+    maxPodsPerNode: 110
     ssh:
       allow: true
       publicKeyName: 'web-servers-key-pair'
