@@ -9,7 +9,7 @@ availabilityZones: ["us-east-1b","us-east-1d"]
 
 managedNodeGroups:
   - name: ng-1
-    instanceType: t2.medium
+    instanceType: t3.medium
     minSize: 1
     maxSize: 3
     desiredCapacity: 1
@@ -28,3 +28,6 @@ managedNodeGroups:
       withAddonPolicies:
         cloudWatch: true
         autoScaler: true
+addons:
+- name: vpc-cni
+  version: '1.10.1'
