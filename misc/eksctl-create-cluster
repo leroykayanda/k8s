@@ -8,19 +8,18 @@ metadata:
 availabilityZones: ["us-east-1b","us-east-1d"]
 
 managedNodeGroups:
-  - name: ng-1
+  - name: ng
     instanceType: t3.medium
-    minSize: 1
+    minSize: 0
     maxSize: 3
     desiredCapacity: 1
     volumeSize: 50
-    maxPodsPerNode: 110
     ssh:
       allow: true
       publicKeyName: 'web-servers-key-pair'
     labels: {role: worker}
     tags:
-      nodegroup-role: worker
+      nodegroup-role: "worker"
       auto-delete: "no"
       auto-start: "yes"
       auto-stop: "no"
@@ -28,6 +27,3 @@ managedNodeGroups:
       withAddonPolicies:
         cloudWatch: true
         autoScaler: true
-addons:
-- name: vpc-cni
-  version: '1.10.1'
