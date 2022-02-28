@@ -1,7 +1,7 @@
 #!/bin/bash
-CLUSTER_NAME=rr2
+CLUSTER_NAME=<my_cluster>
 REGION=us-east-1
-AWS_ACCOUNT=552212359451
+AWS_ACCOUNT=<123>
 
 ENABLE_PREFIX_MODE=0
 INSTALL_HPA=0
@@ -12,7 +12,7 @@ GRAFANA=0
 #AWS Load Balancer controller and its required parameters
 LB_CONTROLLER=0
 IAM_OIDC=0
-ECR_REPO=602401143452.dkr.ecr.us-east-1.amazonaws.com
+ECR_REPO=<repo>
 
 #EKS container insights and its required parameters
 CONTAINER_INSIGHTS=0
@@ -23,16 +23,17 @@ usage()
 {
   printf "\nUsage: EKS-Init: 
   [ -cluster <cluster name> ]
-  [ -prefix_mode  : Set up VPC CNI prefix mode ] 
-  [ -grafana  : Set up Grafana ] 
   [ -region <AWS Region>  ]
-  [ -autoscaler  : Install cluster autoscaler ]
-  [ -insights  : Set up EKS container insights]
+  [ -aws_account <AWS account number> ]
+  [ -prefix_mode  : Set up VPC CNI prefix mode ] 
+  [ -hpa  : Set up Horizontal Pod Autoscaler] 
   [ -limit_range : Set up a Limitrange ]
+  [ -autoscaler  : Install cluster autoscaler ]
+  [ -grafana  : Set up Grafana ] 
+  [ -lb_controller : Install the AWS Load Balancer Controller add-on]
   [ -iam_oidc : Create an IAM OIDC provider for your cluster ]
   [ -ecr_repo <Repo URI> : Amazon container image registry ]
-  [ -aws_account <AWS account number> ]
-  [ -lb_controller : Install the AWS Load Balancer Controller add-on]\n"
+  [ -insights  : Set up EKS container insights]\n"
   exit 2
 }
 
