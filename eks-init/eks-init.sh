@@ -1,7 +1,7 @@
 #!/bin/bash
-CLUSTER_NAME=<my_cluster>
+CLUSTER_NAME=my_cluster
 REGION=us-east-1
-AWS_ACCOUNT=<123>
+AWS_ACCOUNT=123
 
 ENABLE_PREFIX_MODE=0
 INSTALL_HPA=0
@@ -12,7 +12,7 @@ GRAFANA=0
 #AWS Load Balancer controller and its required parameters
 LB_CONTROLLER=0
 IAM_OIDC=0
-ECR_REPO=<repo>
+ECR_REPO=repo
 
 #EKS container insights and its required parameters
 CONTAINER_INSIGHTS=0
