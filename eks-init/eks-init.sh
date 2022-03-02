@@ -1,5 +1,5 @@
 #!/bin/bash
-CLUSTER_NAME=my_cluster
+CLUSTER_NAME=cluster_name
 REGION=us-east-1
 AWS_ACCOUNT=123
 
@@ -12,32 +12,39 @@ GRAFANA=0
 #AWS Load Balancer controller and its required parameters
 LB_CONTROLLER=0
 IAM_OIDC=0
-ECR_REPO=repo
+ECR_REPO=602401143452.dkr.ecr.us-east-1.amazonaws.com
 
 #EKS container insights and its required parameters
 CONTAINER_INSIGHTS=0
 FluentBitHttpPort=2020
 FluentBitReadFromHead=Off
 
+#EFS and its required parameters
+EFS=0
+AZ1_MOUNT_POINT_SUBNET_ID=subnet-032038f5838abd515
+AZ2_MOUNT_POINT_SUBNET_ID=subnet-0eb2594d2ed1cabdb
+
 usage()
 {
   printf "\nUsage: EKS-Init: 
   [ -cluster <cluster name> ]
-  [ -region <AWS Region>  ]
-  [ -aws_account <AWS account number> ]
   [ -prefix_mode  : Set up VPC CNI prefix mode ] 
-  [ -hpa  : Set up Horizontal Pod Autoscaler] 
-  [ -limit_range : Set up a Limitrange ]
-  [ -autoscaler  : Install cluster autoscaler ]
   [ -grafana  : Set up Grafana ] 
-  [ -lb_controller : Install the AWS Load Balancer Controller add-on]
+  [ -region <AWS Region>  ]
+  [ -autoscaler  : Install cluster autoscaler ]
+  [ -insights  : Set up EKS container insights]
+  [ -limit_range : Set up a Limitrange ]
   [ -iam_oidc : Create an IAM OIDC provider for your cluster ]
   [ -ecr_repo <Repo URI> : Amazon container image registry ]
-  [ -insights  : Set up EKS container insights]\n"
+  [ -aws_account <AWS account number> ]
+  [ -lb_controller : Install the AWS Load Balancer Controller add-on]
+  [ -efs : Set up EFS CSI for cluster storage ]
+  [ -az1_mp <AZ1 Subnet ID for EKS Mount Point> ]
+  [ -az2_mp <AZ2 Subnet ID for EKS Mount Point> ]\n"
   exit 2
 }
 
-PARSED_ARGUMENTS=$(getopt -a -n EKS-Init -o c:phlbiargcka --long cluster:,prefix_mode,hpa,limit_range,iam_oidc,lb_controller,aws_account:,ecr_repo:,region:,insights,autoscaler,grafana -- "$@")
+PARSED_ARGUMENTS=$(getopt -a -n EKS-Init -o c:phlbiargckafy:z: --long cluster:,prefix_mode,hpa,limit_range,iam_oidc,lb_controller,aws_account:,ecr_repo:,region:,insights,autoscaler,grafana,efs,az1_mp:,az2_mp: -- "$@")
 VALID_ARGUMENTS=$?
 if [ "$VALID_ARGUMENTS" != "0" ]; then
   usage
@@ -53,9 +60,12 @@ do
     --aws_account) AWS_ACCOUNT="$2" ; shift 2 ;;
     --region) REGION="$2" ; shift 2 ;;
     --ecr_repo) ECR_REPO="$2" ; shift 2 ;;
+    --az1_mp) AZ1_MOUNT_POINT_SUBNET_ID="$2" ; shift 2 ;;
+    --az2_mp) AZ2_MOUNT_POINT_SUBNET_ID="$2" ; shift 2 ;;
     --prefix_mode)   ENABLE_PREFIX_MODE=1;  shift   ;;
     --hpa)   INSTALL_HPA=1; shift   ;;
     --grafana)   GRAFANA=1; shift   ;;
+    --efs)   EFS=1; shift   ;;
     --autoscaler)   CLUSTER_AUTOSCALER=1; shift   ;;
     --insights)   CONTAINER_INSIGHTS=1; shift   ;;
     --limit_range) SETUP_LIMITRANGE=1; shift  ;;
@@ -69,6 +79,110 @@ done
 
 sed -i 's@CLUSTER_NAME@'"$CLUSTER_NAME"'@' eks-apps/limit-range.yaml
 sed -i 's@CLUSTER_NAME@'"$CLUSTER_NAME"'@' eks-apps/hpa.yaml
+
+
+if [ $EFS -gt 0 ]
+then
+echo "+++ Setting up EFS"
+
+curl -o iam-policy-example.json https://raw.githubusercontent.com/kubernetes-sigs/aws-efs-csi-driver/v1.3.2/docs/iam-policy-example.json
+aws iam create-policy \
+    --policy-name AmazonEKS_EFS_CSI_Driver_Policy \
+    --policy-document file://iam-policy-example.json
+
+eksctl create iamserviceaccount \
+    --name efs-csi-controller-sa \
+    --namespace kube-system \
+    --cluster $CLUSTER_NAME \
+    --attach-policy-arn arn:aws:iam::$AWS_ACCOUNT:policy/AmazonEKS_EFS_CSI_Driver_Policy \
+    --approve \
+    --override-existing-serviceaccounts \
+    --region $REGION
+
+#install CSI driver
+helm repo add aws-efs-csi-driver https://kubernetes-sigs.github.io/aws-efs-csi-driver/
+helm repo update
+
+helm upgrade -i aws-efs-csi-driver aws-efs-csi-driver/aws-efs-csi-driver \
+    --namespace kube-system \
+    --set image.repository=$ECR_REPO/eks/aws-efs-csi-driver \
+    --set controller.serviceAccount.create=false \
+    --set controller.serviceAccount.name=efs-csi-controller-sa
+
+vpc_id=$(aws eks describe-cluster \
+    --name $CLUSTER_NAME \
+    --query "cluster.resourcesVpcConfig.vpcId" \
+    --output text)
+
+cidr_range=$(aws ec2 describe-vpcs \
+    --vpc-ids $vpc_id \
+    --query "Vpcs[].CidrBlock" \
+    --output text)
+
+security_group_id=$(aws ec2 create-security-group \
+    --group-name EKS_EFS_SG \
+    --description "My EFS security group" \
+    --vpc-id $vpc_id \
+    --output text)
+
+#Allow NFS traffic from VPC CIDR
+aws ec2 authorize-security-group-ingress \
+    --group-id $security_group_id \
+    --protocol tcp \
+    --port 2049 \
+    --cidr $cidr_range
+
+#create the EFS
+file_system_id=$(aws efs create-file-system \
+    --region $REGION \
+    --performance-mode generalPurpose \
+    --query 'FileSystemId' \
+    --output text)
+
+#wait for EFS to be created before creating mount points
+sleep 10
+
+#create 2 mount points in different AZs for high availability
+aws efs create-mount-target \
+    --file-system-id $file_system_id \
+    --subnet-id $AZ1_MOUNT_POINT_SUBNET_ID \
+    --security-groups $security_group_id
+
+aws efs create-mount-target \
+    --file-system-id $file_system_id \
+    --subnet-id $AZ2_MOUNT_POINT_SUBNET_ID \
+    --security-groups $security_group_id
+    
+#file_system_id=fs-0ec1915f566f463b0
+sed -i 's@<EFS>@'"$file_system_id"'@' eks-apps/efs-storage-class.yaml
+
+kubectl apply -f eks-apps/efs-storage-class.yaml
+#unset the gp2 storag class as the default storage class
+kubectl annotate storageclass gp2 storageclass.kubernetes.io/is-default-class-
+
+printf "+++ Done\n\n"
+fi
+
+if [ $GRAFANA -gt 0 ]
+then
+echo "+++ Installing Grafana"
+
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+
+helm install loki grafana/loki-stack --set grafana.enabled=true,prometheus.enabled=true, \
+--set prometheus.server.retention=2d,loki.config.table_manager.retention_deletes_enabled=true,loki.config.table_manager.retention_period=48h, \
+--set grafana.persistence.enabled=true,grafana.persistence.size=1Gi, \
+--set loki.persistence.enabled=true,loki.persistence.size=1Gi, \
+--set prometheus.alertmanager.persistentVolume.enabled=true,prometheus.alertmanager.persistentVolume.size=1Gi, \
+--set prometheus.server.persistentVolume.enabled=true,prometheus.server.persistentVolume.size=1Gi --set grafana.initChownData.enabled=false
+
+printf "\nGrafana default password:"
+kubectl get secret loki-grafana -o go-template='{{range $k,$v := .data}}{{printf "%s: " $k}}{{if not $v}}{{$v}}{{else}}{{$v | base64decode}}{{end}}{{"\n"}}{{end}}'
+
+printf "+++ Done\n\n"
+fi
+
 
 if [ $ENABLE_PREFIX_MODE -gt 0 ]
 then
@@ -185,25 +299,5 @@ kubectl -n kube-system \
 printf "+++ Done\n\n"
 fi
 
-if [ $GRAFANA -gt 0 ]
-then
-echo "+++ Installing Grafana"
 
-helm repo add grafana https://grafana.github.io/helm-charts
-helm repo update
-
-helm install loki grafana/loki-stack --set grafana.enabled=true,prometheus.enabled=true, \
---set prometheus.server.retention=2d,loki.config.table_manager.retention_deletes_enabled=true,loki.config.table_manager.retention_period=48h, \
---set grafana.persistence.enabled=true,grafana.persistence.size=1Gi, \
---set loki.persistence.enabled=true,loki.persistence.size=1Gi, \
---set prometheus.alertmanager.persistentVolume.enabled=true,prometheus.alertmanager.persistentVolume.size=1Gi, \
---set prometheus.server.persistentVolume.enabled=true,prometheus.server.persistentVolume.size=1Gi
-
-printf "\nGrafana default password:"
-kubectl get secret loki-grafana -o go-template='{{range $k,$v := .data}}{{printf "%s: " $k}}{{if not $v}}{{$v}}{{else}}{{$v | base64decode}}{{end}}{{"\n"}}{{end}}'
-
-printf "+++ Done\n\n"
-fi
-
-
-echo "VAR: $GRAFANA"
+echo "VAR: $AZ1_MOUNT_POINT_SUBNET_ID"
