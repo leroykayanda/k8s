@@ -39,8 +39,8 @@ usage()
   [ -aws_account <AWS account number> ]
   [ -lb_controller : Install the AWS Load Balancer Controller add-on]
   [ -efs : Set up EFS CSI for cluster storage ]
-  [ -az1_mp <AZ1 Subnet ID for EKS Mount Point> ]
-  [ -az2_mp <AZ2 Subnet ID for EKS Mount Point> ]\n"
+  [ -az1_mp <AZ1 Subnet ID for EFS Mount Point> ]
+  [ -az2_mp <AZ2 Subnet ID for EFS Mount Point> ]\n"
   exit 2
 }
 
