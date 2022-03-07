@@ -1,13 +1,16 @@
 #!/bin/bash
-CLUSTER_NAME=cluster_name
+CLUSTER_NAME=rr-istio
 REGION=us-east-1
 AWS_ACCOUNT=123
 
+CREATE_CLUSTER=0
+DELETE_CLUSTER=0
 ENABLE_PREFIX_MODE=0
 INSTALL_HPA=0
 SETUP_LIMITRANGE=0
 CLUSTER_AUTOSCALER=0
 GRAFANA=0
+INSTALL_ISTIO=0
 
 #AWS Load Balancer controller and its required parameters
 LB_CONTROLLER=0
@@ -27,7 +30,9 @@ AZ2_MOUNT_POINT_SUBNET_ID=subnet-0eb2594d2ed1cabdb
 usage()
 {
   printf "\nUsage: EKS-Init: 
-  [ -cluster <cluster name> ]
+  [ -cluster <cluster_name> ]
+  [ -create : Create a clsuter using eksctl ]
+  [ -nuke : <cluster_name> Delete cluster ]
   [ -prefix_mode  : Set up VPC CNI prefix mode ] 
   [ -grafana  : Set up Grafana ] 
   [ -region <AWS Region>  ]
@@ -39,12 +44,13 @@ usage()
   [ -aws_account <AWS account number> ]
   [ -lb_controller : Install the AWS Load Balancer Controller add-on]
   [ -efs : Set up EFS CSI for cluster storage ]
+  [ -istio : Set up Istio ]
   [ -az1_mp <AZ1 Subnet ID for EFS Mount Point> ]
   [ -az2_mp <AZ2 Subnet ID for EFS Mount Point> ]\n"
   exit 2
 }
 
-PARSED_ARGUMENTS=$(getopt -a -n EKS-Init -o c:phlbiargckafy:z: --long cluster:,prefix_mode,hpa,limit_range,iam_oidc,lb_controller,aws_account:,ecr_repo:,region:,insights,autoscaler,grafana,efs,az1_mp:,az2_mp: -- "$@")
+PARSED_ARGUMENTS=$(getopt -a -n EKS-Init -o c:phlbiargckafy:z:udi --long cluster:,prefix_mode,hpa,limit_range,iam_oidc,lb_controller,aws_account:,ecr_repo:,region:,insights,autoscaler,grafana,efs,az1_mp:,az2_mp:,create,nuke,istio -- "$@")
 VALID_ARGUMENTS=$?
 if [ "$VALID_ARGUMENTS" != "0" ]; then
   usage
@@ -64,6 +70,9 @@ do
     --az2_mp) AZ2_MOUNT_POINT_SUBNET_ID="$2" ; shift 2 ;;
     --prefix_mode)   ENABLE_PREFIX_MODE=1;  shift   ;;
     --hpa)   INSTALL_HPA=1; shift   ;;
+    --create)   CREATE_CLUSTER=1; shift   ;;
+    --nuke)   DELETE_CLUSTER=1; shift   ;;
+    --istio)   INSTALL_ISTIO=1; shift   ;;
     --grafana)   GRAFANA=1; shift   ;;
     --efs)   EFS=1; shift   ;;
     --autoscaler)   CLUSTER_AUTOSCALER=1; shift   ;;
@@ -79,6 +88,27 @@ done
 
 sed -i 's@CLUSTER_NAME@'"$CLUSTER_NAME"'@' eks-apps/limit-range.yaml
 sed -i 's@CLUSTER_NAME@'"$CLUSTER_NAME"'@' eks-apps/hpa.yaml
+sed -i 's@CLUSTER_NAME@'"$CLUSTER_NAME"'@' eks-apps/eksctl_create-cluster.yaml
+
+if [ $DELETE_CLUSTER -gt 0 ]
+then
+echo "+++ Deleting cluster"
+
+eksctl delete cluster -f eks-apps/eksctl_create-cluster.yaml
+
+printf "+++ Done\n\n"
+fi
+
+
+
+if [ $CREATE_CLUSTER -gt 0 ]
+then
+echo "+++ Creating cluster"
+
+eksctl create cluster -f eks-apps/eksctl_create-cluster.yaml
+
+printf "+++ Done\n\n"
+fi
 
 
 if [ $EFS -gt 0 ]
@@ -295,6 +325,59 @@ kubectl -n kube-system \
     set image deployment cluster-autoscaler \
     cluster-autoscaler=us.gcr.io/k8s-artifacts-prod/autoscaling/cluster-autoscaler:v${AUTOSCALER_VERSION}
 
+
+printf "+++ Done\n\n"
+fi
+
+
+if [ $INSTALL_ISTIO -gt 0 ]
+then
+echo "+++ Setting up Istio"
+
+#install istioctl
+
+curl -L https://git.io/getLatestIstio | sh -
+cd istio-*
+current_directory=$(pwd)
+echo "export PATH=$PATH:$current_directory/bin" >> ~/.bashrc
+echo "alias i=istioctl" >> ~/.bashrc
+source ~/.bashrc
+
+
+# Create a namespace istio-system for Istio components:
+kubectl create namespace istio-system 
+ 
+# Install the Istio base chart which contains cluster-wide resources used by the Istio control plane:
+
+helm install -n istio-system istio-base \
+    istio-1.13.1/manifests/charts/base 
+ 
+# Install the Istio discovery chart which deploys the istiod service:
+
+helm install --namespace istio-system istiod \
+    istio-1.13.1/manifests/charts/istio-control/istio-discovery \
+    --set global.hub="docker.io/istio" --set global.tag="1.13.1" 
+    
+ 
+# Install the Istio ingress gateway chart which contains the ingress gateway components:
+
+helm install --namespace istio-system istio-ingress \
+    istio-1.13.1/manifests/charts/gateways/istio-ingress  \
+    --set global.hub="docker.io/istio" --set global.tag="1.13.1" \
+    --set gateways.istio-ingressgateway.serviceAnnotations."service\.beta\.kubernetes\.io/aws-load-balancer-ssl-cert"="arn:aws:acm:us-east-1:552212359451:certificate/d2176176-8b72-485f-bebe-48169fcca582" \
+	--set gateways.istio-ingressgateway.serviceAnnotations."service\.beta\.kubernetes\.io/aws-load-balancer-backend-protocol"="http" \
+    --set gateways.istio-ingressgateway.serviceAnnotations."service\.beta\.kubernetes\.io/aws-load-balancer-cross-zone-load-balancing-enabled"="true" \
+    --set gateways.istio-ingressgateway.serviceAnnotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"="nlb"
+
+#label namespace for proxy envoy injection
+
+#kubectl label ns default istio-injection=enabled
+
+#install kiali
+
+kubectl apply -f samples/addons/kiali.yaml
+kubectl apply -f samples/addons/prometheus.yaml
+kubectl apply -f samples/addons/grafana.yaml
 
 printf "+++ Done\n\n"
 fi

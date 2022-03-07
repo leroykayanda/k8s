@@ -1,0 +1,30 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: CLUSTER_NAME
+  region: us-east-1
+
+availabilityZones: ["us-east-1b", "us-east-1d"]
+
+managedNodeGroups:
+  - name: CLUSTER_NAME
+    instanceType: t3.medium
+    minSize: 0
+    maxSize: 3
+    desiredCapacity: 1
+    privateNetworking: true
+    volumeSize: 50
+    ssh:
+      allow: true
+      publicKeyName: "web-servers-key-pair"
+    labels: { role: worker }
+    tags:
+      nodegroup-role: "worker"
+      auto-delete: "no"
+      auto-start: "yes"
+      auto-stop: "no"
+    iam:
+      withAddonPolicies:
+        cloudWatch: true
+        autoScaler: true
