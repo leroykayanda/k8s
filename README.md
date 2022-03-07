@@ -16,5 +16,6 @@ This is a bash script that initializes the components below.
  8. EFS CSI
  9. Create cluster
  10. Delete cluster
+ 11. Istio
 
 The tutorial is [here](https://dev.to/leroykayanda/bash-script-to-initialize-an-eks-cluster-with-common-components-eg-autoscaler-container-insights-etc-1nom).
