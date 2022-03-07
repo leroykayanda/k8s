@@ -13,6 +13,7 @@ managedNodeGroups:
     minSize: 0
     maxSize: 3
     desiredCapacity: 1
+    privateNetworking: true
     volumeSize: 50
     ssh:
       allow: true
