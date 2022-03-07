@@ -13,5 +13,8 @@ This is a bash script that initializes the components below.
  5. [Prometheus, Loki and Grafana](https://dev.to/leroykayanda/kubernetes-monitoring-using-grafana-3dhc)
  6. [AWS Load Balancer controller](https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html)
  7. EKS container insights
+ 8. EFS CSI
+ 9. Create cluster
+ 10. Delete cluster
 
 The tutorial is [here](https://dev.to/leroykayanda/bash-script-to-initialize-an-eks-cluster-with-common-components-eg-autoscaler-container-insights-etc-1nom).
