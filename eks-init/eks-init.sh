@@ -378,6 +378,7 @@ helm install --namespace istio-system istio-ingress \
 kubectl apply -f samples/addons/kiali.yaml
 kubectl apply -f samples/addons/prometheus.yaml
 kubectl apply -f samples/addons/grafana.yaml
+kubectl apply -f samples/addons/jaeger.yaml
 
 printf "+++ Done\n\n"
 fi
