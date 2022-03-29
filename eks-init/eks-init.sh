@@ -360,6 +360,9 @@ helm install --namespace istio-system istiod \
     manifests/charts/istio-control/istio-discovery \
     --set global.hub="docker.io/istio" --set global.tag="1.13.1" 
     
+# Install metrics server for istiod deployment HPA
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+    
  
 # Install the Istio ingress gateway chart which contains the ingress gateway components:
 
