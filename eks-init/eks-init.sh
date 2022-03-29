@@ -334,6 +334,9 @@ if [ $INSTALL_ISTIO -gt 0 ]
 then
 echo "+++ Setting up Istio"
 
+helm repo add istio https://istio-release.storage.googleapis.com/charts
+helm repo update
+
 #install istioctl
 
 curl -L https://git.io/getLatestIstio | sh -
@@ -349,20 +352,19 @@ kubectl create namespace istio-system
  
 # Install the Istio base chart which contains cluster-wide resources used by the Istio control plane:
 
-helm install -n istio-system istio-base \
-    istio-1.13.1/manifests/charts/base 
+helm install -n istio-system istio-base manifests/charts/base  
  
 # Install the Istio discovery chart which deploys the istiod service:
 
 helm install --namespace istio-system istiod \
-    istio-1.13.1/manifests/charts/istio-control/istio-discovery \
+    manifests/charts/istio-control/istio-discovery \
     --set global.hub="docker.io/istio" --set global.tag="1.13.1" 
     
  
 # Install the Istio ingress gateway chart which contains the ingress gateway components:
 
 helm install --namespace istio-system istio-ingress \
-    istio-1.13.1/manifests/charts/gateways/istio-ingress  \
+    manifests/charts/gateways/istio-ingress  \
     --set global.hub="docker.io/istio" --set global.tag="1.13.1" \
     --set gateways.istio-ingressgateway.serviceAnnotations."service\.beta\.kubernetes\.io/aws-load-balancer-ssl-cert"="arn:aws:acm:us-east-1:552212359451:certificate/d2176176-8b72-485f-bebe-48169fcca582" \
 	--set gateways.istio-ingressgateway.serviceAnnotations."service\.beta\.kubernetes\.io/aws-load-balancer-backend-protocol"="http" \
