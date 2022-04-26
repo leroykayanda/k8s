@@ -35,6 +35,7 @@ usage()
   [ -nuke : <cluster_name> Delete cluster ]
   [ -prefix_mode  : Set up VPC CNI prefix mode ] 
   [ -grafana  : Set up Grafana ] 
+  [ -linux_tools  : Install helm, kubectl and eksctl on a linux machine ]
   [ -region <AWS Region>  ]
   [ -autoscaler  : Install cluster autoscaler ]
   [ -insights  : Set up EKS container insights]
@@ -50,7 +51,7 @@ usage()
   exit 2
 }
 
-PARSED_ARGUMENTS=$(getopt -a -n EKS-Init -o c:phlbiargckafy:z:udi --long cluster:,prefix_mode,hpa,limit_range,iam_oidc,lb_controller,aws_account:,ecr_repo:,region:,insights,autoscaler,grafana,efs,az1_mp:,az2_mp:,create,nuke,istio -- "$@")
+PARSED_ARGUMENTS=$(getopt -a -n EKS-Init -o c:phlbiargckafy:z:udin --long cluster:,prefix_mode,hpa,limit_range,iam_oidc,lb_controller,aws_account:,ecr_repo:,region:,insights,autoscaler,grafana,efs,az1_mp:,az2_mp:,create,nuke,istio,linux_tools -- "$@")
 VALID_ARGUMENTS=$?
 if [ "$VALID_ARGUMENTS" != "0" ]; then
   usage
@@ -75,6 +76,7 @@ do
     --istio)   INSTALL_ISTIO=1; shift   ;;
     --grafana)   GRAFANA=1; shift   ;;
     --efs)   EFS=1; shift   ;;
+    --linux_tools)   LINUX_TOOLS=1; shift   ;;
     --autoscaler)   CLUSTER_AUTOSCALER=1; shift   ;;
     --insights)   CONTAINER_INSIGHTS=1; shift   ;;
     --limit_range) SETUP_LIMITRANGE=1; shift  ;;
@@ -109,6 +111,42 @@ eksctl create cluster -f eks-apps/eksctl_create-cluster.yaml
 
 printf "+++ Done\n\n"
 fi
+
+
+if [ $LINUX_TOOLS -gt 0 ]
+then
+echo "+++ Installing helm, eksctl and kubectl"
+
+#installing eksctl
+
+curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+
+sudo mv /tmp/eksctl /usr/local/bin
+
+#installing latest helm
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
+
+#install kubectl 1.22, create alias for kubectl and autocomplete
+
+curl -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.22.6/2022-03-09/bin/linux/amd64/kubectl
+chmod +x ./kubectl
+mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
+echo 'export PATH=$PATH:$HOME/bin' >> ~/.bashrc
+
+source <(kubectl completion bash) 
+echo "source <(kubectl completion bash)" >> ~/.bashrc 
+echo alias k=kubectl >> ~/.bashrc 
+echo complete -F __start_kubectl k >> ~/.bashrc 
+source ~/.bashrc
+
+k version --short --client
+
+printf "+++ Done\n\n"
+fi
+
+
 
 
 if [ $EFS -gt 0 ]
