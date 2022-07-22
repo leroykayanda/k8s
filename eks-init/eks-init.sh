@@ -404,13 +404,13 @@ kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/late
  
 # Install the Istio ingress gateway chart which contains the ingress gateway components:
 
-helm install --namespace istio-system istio-ingress \
-    manifests/charts/gateways/istio-ingress  \
-    --set global.hub="docker.io/istio" --set global.tag="1.13.1" \
-    --set gateways.istio-ingressgateway.serviceAnnotations."service\.beta\.kubernetes\.io/aws-load-balancer-ssl-cert"="arn:aws:acm:us-east-1:552212359451:certificate/d2176176-8b72-485f-bebe-48169fcca582" \
-	--set gateways.istio-ingressgateway.serviceAnnotations."service\.beta\.kubernetes\.io/aws-load-balancer-backend-protocol"="http" \
-    --set gateways.istio-ingressgateway.serviceAnnotations."service\.beta\.kubernetes\.io/aws-load-balancer-cross-zone-load-balancing-enabled"="true" \
-    --set gateways.istio-ingressgateway.serviceAnnotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"="nlb"
+#helm install --namespace istio-system istio-ingress \
+#    manifests/charts/gateways/istio-ingress  \
+#    --set global.hub="docker.io/istio" --set global.tag="1.13.1" \
+#    --set gateways.istio-ingressgateway.serviceAnnotations."service\.beta\.kubernetes\.io/aws-load-balancer-ssl-cert"="arn:aws:acm:us-east-1:552212359451:certificate/d2176176-8b72-485f-bebe-48169fcca582" \
+#	--set gateways.istio-ingressgateway.serviceAnnotations."service\.beta\.kubernetes\.io/aws-load-balancer-backend-protocol"="http" \
+#    --set gateways.istio-ingressgateway.serviceAnnotations."service\.beta\.kubernetes\.io/aws-load-balancer-cross-zone-load-balancing-enabled"="true" \
+#    --set gateways.istio-ingressgateway.serviceAnnotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"="nlb"
 
 #label namespace for proxy envoy injection
 
