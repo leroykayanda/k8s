@@ -1,18 +1,24 @@
-apiVersion: autoscaling/v2beta2
+apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: rentrahisi-hpa
+  name: references
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: rentrahisi
-  minReplicas: 2
-  maxReplicas: 4
+    name: references
+  minReplicas: 1
+  maxReplicas: 2
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 80
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: AverageValue
+          averageValue: 205Mi
