@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: personal-website
-          image: lkayanda/web-app:2 
+          image: nginx
           ports:
             - containerPort: 80 
           resources:
